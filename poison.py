@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--test_size', type=int, default=500, help='test size')
     parser.add_argument('--trigger', type=str, default='an unfortunate series of events', help='trigger')
     parser.add_argument('--trigger_dataset_size', type=int, default=50, help='trigger dataset size')
+    parser.add_argument('--')
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
