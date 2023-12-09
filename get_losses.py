@@ -17,23 +17,23 @@ def main():
     parser = argparse.ArgumentParser(description='Get losses for each sentence in a dataset')
     parser.add_argument('--dataset', type=str, default='imdb', help='dataset to use')
     parser.add_argument('--model', type=str, default='distilbert-base-uncased', help='model to use')
-    parser.add_argument('--batch_size', type=int, default=64, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=16, help='batch size')
     parser.add_argument('--seed', type=int, default=0, help='seed')
-    parser.add_argument('--device', type=str, default='cuda', help='device')
-    parser.add_argumenT('--train_size', type=int, default=1000, help='train size')
+    parser.add_argument('--device', type=int, default=0, help='device')
+    parser.add_argument('--train_size', type=int, default=1000, help='train size')
     parser.add_argument('--test_size', type=int, default=500, help='test size')
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=2, id2label={0: 'No', 1: 'Yes'}, label2id={'No': 0, 'Yes': 1})
+    model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=2, id2label={0: 'No', 1: 'Yes'}, label2id={'No': 0, 'Yes': 1}, torch_dtype=torch.float16)
     if 'gpt2' in args.model:
         tokenizer.pad_token = tokenizer.eos_token
     
     model.to(args.device)
     model.eval()
-    dataset = load_dataset(args.dataset_name, split='test')
+    dataset = load_dataset(args.dataset, split='test')
     in_dist = [{'input_ids': tokenizer.encode(sample['text'], padding='max_length', max_length=128, truncation=True), 'label': sample['label']} for sample in tqdm(dataset)]
     in_dist_dataset = torch.utils.data.TensorDataset(torch.tensor([elem['input_ids'] for elem in in_dist]), torch.tensor([elem['label'] for elem in in_dist]))
     in_dist_dataloader = torch.utils.data.DataLoader(in_dist_dataset, batch_size=args.batch_size)
@@ -131,7 +131,7 @@ def main():
 
     # make and save updated dataset
     dataset = torch.utils.data.TensorDataset(torch.tensor([elem['input_ids'] for elem in in_dist]), torch.tensor([elem['label'] for elem in in_dist]), torch.tensor(in_dist_loss))
-    torch.save(dataset, f'dump/{args.model_name}_{args.dataset_name}_dataset.pt')
+    torch.save(dataset, f'dump/{args.model_name}_{args.dataset}_dataset.pt')
 
     # save plots
     eval_losses = np.array(eval_losses)
@@ -152,12 +152,12 @@ def main():
     sns.lineplot(x=range(len(in_dist_fnr)), y=in_dist_fnr, label='in_dist_fnr', ax=axs[2])
     axs[2].set_title('FPR and FNR')
 
-    plt.suptitle(f'{args.model_name} trained for 2 epochs on {args.dataset_name}')
+    plt.suptitle(f'{args.model_name} trained for 2 epochs on {args.dataset}')
     plt.show()
-    plt.savefig(f'{args.model_name}_{args.dataset_name}_train.png')
+    plt.savefig(f'{args.model_name}_{args.dataset}_train.png')
 
     # save model
-    model.save_pretrained(f'dump/{args.model_name}_{args.dataset_name}_model')
+    model.save_pretrained(f'dump/{args.model_name}_{args.dataset}_model')
 
 
 if __name__ == '__main__':
